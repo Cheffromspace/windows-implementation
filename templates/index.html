@@ -42,6 +42,12 @@
             z-index: 1000;
             pointer-events: none;
         }
+        .focused {
+            outline: 2px solid #00ff00;
+        }
+        .unfocused {
+            outline: 2px solid #ff0000;
+        }
     </style>
 </head>
 <body>
@@ -55,13 +61,30 @@
         const desktop = document.getElementById('desktop');
         const container = document.querySelector('.desktop-container');
         const debugOverlay = document.getElementById('debug-overlay');
+        let hasFocus = false;
+        let inputBuffer = [];
+        let inputTimeout = null;
 
         // Track actual screen dimensions
         let screenWidth = 1920;  // Default, will be updated from backend
         let screenHeight = 1080; // Default, will be updated from backend
 
         function updateDebugInfo(info) {
-            debugOverlay.textContent = JSON.stringify(info, null, 2);
+            debugOverlay.textContent = JSON.stringify({
+                ...info,
+                focus: hasFocus,
+                bufferSize: inputBuffer.length
+            }, null, 2);
+        }
+
+        function updateFocusState() {
+            if (hasFocus) {
+                desktop.classList.add('focused');
+                desktop.classList.remove('unfocused');
+            } else {
+                desktop.classList.add('unfocused');
+                desktop.classList.remove('focused');
+            }
         }
 
         // Calculate scaling factors and image position
@@ -69,15 +92,10 @@
             const containerRect = container.getBoundingClientRect();
             const imageRect = desktop.getBoundingClientRect();
 
-            // Calculate the actual rendered dimensions of the image
             const renderedWidth = imageRect.width;
             const renderedHeight = imageRect.height;
-
-            // Calculate scaling factors
             const scaleX = screenWidth / renderedWidth;
             const scaleY = screenHeight / renderedHeight;
-
-            // Calculate image offset within container
             const offsetX = imageRect.left - containerRect.left;
             const offsetY = imageRect.top - containerRect.top;
 
@@ -125,16 +143,11 @@
             if (!lastMouseEvent) return;
 
             const info = getImageInfo();
-            
-            // Calculate coordinates relative to the image
             const relativeX = lastMouseEvent.clientX - info.imageRect.left;
             const relativeY = lastMouseEvent.clientY - info.imageRect.top;
-            
-            // Scale to actual screen coordinates
             const x = Math.round(relativeX * info.scaleX);
             const y = Math.round(relativeY * info.scaleY);
 
-            // Update debug info
             updateDebugInfo({
                 mouse: {
                     client: { x: lastMouseEvent.clientX, y: lastMouseEvent.clientY },
@@ -149,7 +162,6 @@
                 screen: { width: screenWidth, height: screenHeight }
             });
             
-            // Only emit if coordinates are within bounds
             if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight) {
                 socket.emit('mouse_move', {x, y});
             }
@@ -165,28 +177,23 @@
             }
         });
 
-        // Handle clicks - simplified to just emit click event without coordinates
         desktop.addEventListener('click', (e) => {
             const info = getImageInfo();
             const relativeX = e.clientX - info.imageRect.left;
             const relativeY = e.clientY - info.imageRect.top;
-            
-            // Scale to actual screen coordinates
             const x = Math.round(relativeX * info.scaleX);
             const y = Math.round(relativeY * info.scaleY);
             
-            // Only emit if click is within bounds
             if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight) {
-                // First move to the position
                 socket.emit('mouse_move', {x, y});
-                // Then emit click without coordinates
                 socket.emit('mouse_click');
+                hasFocus = true;
+                updateFocusState();
             }
         });
 
         // Enhanced key mapping to match backend
         const keyMapping = {
-            // Navigation keys
             'Enter': 'Enter',
             'NumpadEnter': 'Enter',
             'Backspace': 'Backspace',
@@ -197,16 +204,13 @@
             'ArrowRight': 'ArrowRight',
             'ArrowUp': 'ArrowUp',
             'ArrowDown': 'ArrowDown',
-            // Modifier keys
             'Control': 'Control',
             'Alt': 'Alt',
             'Shift': 'Shift',
             'Meta': 'Meta',
-            // Function keys
             'F1': 'F1', 'F2': 'F2', 'F3': 'F3', 'F4': 'F4',
             'F5': 'F5', 'F6': 'F6', 'F7': 'F7', 'F8': 'F8',
             'F9': 'F9', 'F10': 'F10', 'F11': 'F11', 'F12': 'F12',
-            // Additional special keys
             'Home': 'Home',
             'End': 'End',
             'PageUp': 'PageUp',
@@ -215,14 +219,35 @@
             'Space': 'Space'
         };
 
-        // Handle keyboard input with improved special key handling
+        function processInputBuffer() {
+            if (inputBuffer.length > 0) {
+                const event = inputBuffer.shift();
+                const mappedKey = keyMapping[event.code] || event.key;
+                
+                socket.emit('key_press', {
+                    key: mappedKey,
+                    code: event.code,
+                    ctrl: event.ctrlKey,
+                    alt: event.altKey,
+                    shift: event.shiftKey,
+                    meta: event.metaKey,
+                    repeat: event.repeat
+                });
+
+                // Schedule next input processing
+                if (inputBuffer.length > 0) {
+                    inputTimeout = setTimeout(processInputBuffer, 50);
+                }
+            }
+        }
+
         document.addEventListener('keydown', (e) => {
-            // Always prevent default for special keys and modifiers
+            if (!hasFocus) return;
+
             if (keyMapping[e.code] || e.ctrlKey || e.altKey || e.metaKey) {
                 e.preventDefault();
             }
 
-            // Log detailed key event information for debugging
             console.log('Key event details:', {
                 key: e.key,
                 code: e.code,
@@ -234,26 +259,37 @@
                 repeat: e.repeat
             });
 
-            // Handle special keys using the code property
-            const mappedKey = keyMapping[e.code] || e.key;
-
-            // Emit the key press event with enhanced metadata
-            socket.emit('key_press', {
-                key: mappedKey,
-                code: e.code,
-                ctrl: e.ctrlKey,
-                alt: e.altKey,
-                shift: e.shiftKey,
-                meta: e.metaKey,
-                repeat: e.repeat
-            });
+            // Add to input buffer
+            inputBuffer.push(e);
+            
+            // Start processing if not already started
+            if (inputTimeout === null) {
+                processInputBuffer();
+            }
         });
 
-        // Prevent keyup default behavior for special keys
         document.addEventListener('keyup', (e) => {
+            if (!hasFocus) return;
+            
             if (keyMapping[e.code] || e.ctrlKey || e.altKey || e.metaKey) {
                 e.preventDefault();
             }
+        });
+
+        // Handle focus
+        desktop.addEventListener('mouseenter', () => {
+            hasFocus = true;
+            updateFocusState();
+        });
+
+        desktop.addEventListener('mouseleave', () => {
+            hasFocus = false;
+            updateFocusState();
+        });
+
+        window.addEventListener('blur', () => {
+            hasFocus = false;
+            updateFocusState();
         });
 
         // Handle window resize
