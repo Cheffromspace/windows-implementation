@@ -135,9 +135,6 @@ class ComputerControl:
     def mouse_click(self, button: str = "left") -> bool:
         """Click the specified mouse button"""
         try:
-            # Ensure window is focused before clicking
-            self._focus_window()
-            
             current_x, current_y = win32gui.GetCursorPos()
             logger.debug(f"Clicking at position: ({current_x}, {current_y})")
             
@@ -160,9 +157,6 @@ class ComputerControl:
             # Move to coordinates if provided
             if x is not None and y is not None:
                 self.mouse_move(x, y)
-            
-            # Ensure window is focused
-            self._focus_window()
             
             current_x, current_y = win32gui.GetCursorPos()
             logger.debug(f"Double clicking at position: ({current_x}, {current_y})")
