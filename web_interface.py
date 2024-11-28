@@ -115,7 +115,15 @@ def handle_computer():
     
     elif action == 'type':
         text = data.get('text', '')
-        success = computer.type_text(text)
+        # Handle special keys in curly braces
+        if text.startswith('{') and text.endswith('}'):
+            key = text[1:-1]  # Remove curly braces
+            if key.upper() == 'ENTER':
+                success = computer.key_press('Enter')
+            else:
+                success = computer.key_press(key)
+        else:
+            success = computer.type_text(text)
         return jsonify({'success': success})
     
     elif action == 'key':
