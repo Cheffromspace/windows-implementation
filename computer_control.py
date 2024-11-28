@@ -138,14 +138,8 @@ class ComputerControl:
             current_x, current_y = win32gui.GetCursorPos()
             logger.debug(f"Clicking at position: ({current_x}, {current_y})")
             
-            if button == "left":
-                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
-                time.sleep(self.config["mouse_settings"]["click_delay"])
-                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
-            elif button == "right":
-                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
-                time.sleep(self.config["mouse_settings"]["click_delay"])
-                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+            # Use pyautogui's click instead of win32api.mouse_event
+            pyautogui.click(button=button)
             return True
         except Exception as e:
             logger.error(f"Mouse click failed: {str(e)}")
@@ -161,19 +155,8 @@ class ComputerControl:
             current_x, current_y = win32gui.GetCursorPos()
             logger.debug(f"Double clicking at position: ({current_x}, {current_y})")
             
-            # First click
-            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
-            time.sleep(self.config["mouse_settings"]["click_delay"])
-            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
-            
-            # Wait appropriate time for double click
-            time.sleep(self.config["mouse_settings"]["click_delay"])
-            
-            # Second click
-            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
-            time.sleep(self.config["mouse_settings"]["click_delay"])
-            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
-            
+            # Use pyautogui's doubleClick
+            pyautogui.doubleClick()
             return True
         except Exception as e:
             logger.error(f"Double click failed: {str(e)}")
@@ -184,9 +167,9 @@ class ComputerControl:
         try:
             if button == "left":
                 self.is_mouse_down = False
-                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
+                pyautogui.mouseUp(button=button)
             else:
-                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+                pyautogui.mouseUp(button=button)
             return True
         except Exception:
             return False
