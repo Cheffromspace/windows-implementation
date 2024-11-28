@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Computer Control Interface</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        .desktop-container {
+            width: 900px;
+            height: 600px;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        #desktop {
+            position: absolute;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            cursor: default;
+        }
+        #debug-overlay {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="debug-overlay"></div>
+    <div class="desktop-container">
+        <img id="desktop" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+    </div>
+
+    <script>
+        let socket;
+        const desktop = document.getElementById('desktop');
+        const container = document.querySelector('.desktop-container');
+        const debugOverlay = document.getElementById('debug-overlay');
+
+        // Track actual screen dimensions
+        let screenWidth = 1920;  // Default, will be updated from backend
+        let screenHeight = 1080; // Default, will be updated from backend
+
+        function updateDebugInfo(info) {
+            debugOverlay.textContent = JSON.stringify(info, null, 2);
+        }
+
+        // Calculate scaling factors and image position
+        function getImageInfo() {
+            const containerRect = container.getBoundingClientRect();
+            const imageRect = desktop.getBoundingClientRect();
+
+            // Calculate the actual rendered dimensions of the image
+            const renderedWidth = imageRect.width;
+            const renderedHeight = imageRect.height;
+
+            // Calculate scaling factors
+            const scaleX = screenWidth / renderedWidth;
+            const scaleY = screenHeight / renderedHeight;
+
+            // Calculate image offset within container
+            const offsetX = imageRect.left - containerRect.left;
+            const offsetY = imageRect.top - containerRect.top;
+
+            return {
+                containerRect,
+                imageRect,
+                renderedWidth,
+                renderedHeight,
+                scaleX,
+                scaleY,
+                offsetX,
+                offsetY
+            };
+        }
+
+        function initSocket() {
+            socket = io({
+                transports: ['websocket'],
+                upgrade: false,
+                reconnection: true,
+                reconnectionAttempts: 5
+            });
+
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                socket.emit('start_stream');
+            });
+
+            socket.on('desktop_frame', (data) => {
+                desktop.src = 'data:image/jpeg;base64,' + data.frame;
+            });
+
+            socket.on('screen_dimensions', (dimensions) => {
+                screenWidth = dimensions.width;
+                screenHeight = dimensions.height;
+                console.log('Received screen dimensions:', dimensions);
+            });
+        }
+
+        // Handle mouse movement with requestAnimationFrame for smooth tracking
+        let lastMouseEvent = null;
+        let animationFrameId = null;
+
+        function handleMouseMove() {
+            if (!lastMouseEvent) return;
+
+            const info = getImageInfo();
+            
+            // Calculate coordinates relative to the image
+            const relativeX = lastMouseEvent.clientX - info.imageRect.left;
+            const relativeY = lastMouseEvent.clientY - info.imageRect.top;
+            
+            // Scale to actual screen coordinates
+            const x = Math.round(relativeX * info.scaleX);
+            const y = Math.round(relativeY * info.scaleY);
+
+            // Update debug info
+            updateDebugInfo({
+                mouse: {
+                    client: { x: lastMouseEvent.clientX, y: lastMouseEvent.clientY },
+                    relative: { x: relativeX, y: relativeY },
+                    scaled: { x, y }
+                },
+                image: {
+                    rendered: { width: info.renderedWidth, height: info.renderedHeight },
+                    scale: { x: info.scaleX, y: info.scaleY },
+                    offset: { x: info.offsetX, y: info.offsetY }
+                },
+                screen: { width: screenWidth, height: screenHeight }
+            });
+            
+            // Only emit if coordinates are within bounds
+            if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight) {
+                socket.emit('mouse_move', {x, y});
+            }
+            
+            lastMouseEvent = null;
+            animationFrameId = null;
+        }
+
+        desktop.addEventListener('mousemove', (e) => {
+            lastMouseEvent = e;
+            if (!animationFrameId) {
+                animationFrameId = requestAnimationFrame(handleMouseMove);
+            }
+        });
+
+        // Handle clicks
+        desktop.addEventListener('click', (e) => {
+            const info = getImageInfo();
+            
+            // Calculate coordinates relative to the image
+            const relativeX = e.clientX - info.imageRect.left;
+            const relativeY = e.clientY - info.imageRect.top;
+            
+            // Scale to actual screen coordinates
+            const x = Math.round(relativeX * info.scaleX);
+            const y = Math.round(relativeY * info.scaleY);
+            
+            // Only emit if coordinates are within bounds
+            if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight) {
+                socket.emit('mouse_click', {x, y});
+            }
+        });
+
+        // Handle keyboard input
+        document.addEventListener('keydown', (e) => {
+            // Prevent default browser shortcuts
+            if (e.ctrlKey || e.altKey || e.metaKey) {
+                e.preventDefault();
+            }
+            socket.emit('key_press', {
+                key: e.key,
+                ctrl: e.ctrlKey,
+                alt: e.altKey,
+                shift: e.shiftKey
+            });
+        });
+
+        // Handle window resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const info = getImageInfo();
+                updateDebugInfo({
+                    image: {
+                        rendered: { width: info.renderedWidth, height: info.renderedHeight },
+                        scale: { x: info.scaleX, y: info.scaleY },
+                        offset: { x: info.offsetX, y: info.offsetY }
+                    },
+                    screen: { width: screenWidth, height: screenHeight }
+                });
+            }, 100);
+        });
+
+        window.onload = initSocket;
+    </script>
+</body>
+</html>

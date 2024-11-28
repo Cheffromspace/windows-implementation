@@ -1,0 +1,9 @@
+flask>=2.0.0
+pyautogui>=0.9.53
+pillow>=8.0.0
+opencv-python>=4.5.0
+vidgear>=0.3.0
+flask-socketio>=5.0.0
+python-engineio>=4.0.0
+python-socketio>=5.0.0
+pywin32>=300
