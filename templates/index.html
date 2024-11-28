@@ -62,8 +62,6 @@
         const container = document.querySelector('.desktop-container');
         const debugOverlay = document.getElementById('debug-overlay');
         let hasFocus = false;
-        let inputBuffer = [];
-        let inputTimeout = null;
 
         // Track actual screen dimensions
         let screenWidth = 1920;  // Default, will be updated from backend
@@ -72,8 +70,7 @@
         function updateDebugInfo(info) {
             debugOverlay.textContent = JSON.stringify({
                 ...info,
-                focus: hasFocus,
-                bufferSize: inputBuffer.length
+                focus: hasFocus
             }, null, 2);
         }
 
@@ -219,38 +216,6 @@
             'Space': 'space'
         };
 
-        function processInputBuffer() {
-            if (inputBuffer.length > 0) {
-                const event = inputBuffer.shift();
-                
-                // Handle special key sequences like {Enter}
-                if (event.specialKey) {
-                    socket.emit('key_press', {
-                        key: event.specialKey,
-                        isSpecial: true
-                    });
-                    console.log('Special key press:', event.specialKey);
-                } else {
-                    const mappedKey = keyMapping[event.code] || event.key;
-                    socket.emit('key_press', {
-                        key: mappedKey,
-                        code: event.code,
-                        ctrl: event.ctrlKey,
-                        alt: event.altKey,
-                        shift: event.shiftKey,
-                        meta: event.metaKey,
-                        repeat: event.repeat
-                    });
-                    console.log('Regular key press:', mappedKey);
-                }
-
-                // Schedule next input processing
-                if (inputBuffer.length > 0) {
-                    inputTimeout = setTimeout(processInputBuffer, 50);
-                }
-            }
-        }
-
         document.addEventListener('keydown', (e) => {
             if (!hasFocus) return;
 
@@ -258,48 +223,25 @@
                 e.preventDefault();
             }
 
-            // Check for special key sequences like {Enter}
-            if (e.key === '{') {
-                let specialKeyBuffer = '';
-                let isSpecialKey = true;
-                
-                document.addEventListener('keydown', function collectSpecialKey(event) {
-                    if (event.key === '}') {
-                        document.removeEventListener('keydown', collectSpecialKey);
-                        if (specialKeyBuffer) {
-                            inputBuffer.push({ specialKey: specialKeyBuffer });
-                            if (inputTimeout === null) {
-                                processInputBuffer();
-                            }
-                        }
-                    } else {
-                        specialKeyBuffer += event.key;
-                    }
-                    event.preventDefault();
-                });
-                
-                e.preventDefault();
-                return;
-            }
-
-            console.log('Key event details:', {
+            const mappedKey = keyMapping[e.code] || e.key;
+            
+            console.log('Key event:', {
                 key: e.key,
                 code: e.code,
-                mapped: keyMapping[e.code],
+                mapped: mappedKey,
                 ctrl: e.ctrlKey,
                 alt: e.altKey,
                 shift: e.shiftKey,
-                meta: e.metaKey,
-                repeat: e.repeat
+                meta: e.metaKey
             });
 
-            // Add to input buffer
-            inputBuffer.push(e);
-            
-            // Start processing if not already started
-            if (inputTimeout === null) {
-                processInputBuffer();
-            }
+            socket.emit('key_press', {
+                key: mappedKey,
+                ctrl: e.ctrlKey,
+                alt: e.altKey,
+                shift: e.shiftKey,
+                meta: e.metaKey
+            });
         });
 
         document.addEventListener('keyup', (e) => {

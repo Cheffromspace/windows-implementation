@@ -8,7 +8,7 @@ import threading
 from engineio.async_drivers import threading as async_threading
 
 # Configure logging
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -16,8 +16,8 @@ app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, 
                    cors_allowed_origins="*",
                    async_mode='threading',
-                   logger=False,
-                   engineio_logger=False)
+                   logger=True,
+                   engineio_logger=True)
 
 router = CommandRouter()
 computer = ComputerControl()
@@ -77,9 +77,8 @@ def handle_mouse_move(data):
         logger.error(f"Mouse move error: {str(e)}")
 
 @socketio.on('mouse_click')
-def handle_mouse_click(*args):  # Changed to accept variable arguments
+def handle_mouse_click(*args):
     try:
-        # Only perform the click without moving the mouse
         computer.mouse_click()
     except Exception as e:
         logger.error(f"Mouse click error: {str(e)}")
@@ -90,28 +89,25 @@ def handle_key_press(data):
         key = data['key']
         logger.debug(f"Received key press: {data}")
         
-        # Handle special key sequences
-        if data.get('isSpecial'):
-            logger.debug(f"Processing special key: {key}")
-            # Handle Enter key specifically
-            if key.lower() == 'enter':
-                computer.key_press('enter')
-                time.sleep(0.1)  # Small delay after Enter
-            else:
-                computer.key_press(key.lower())
+        # Handle regular keys and modifiers
+        modifiers = {
+            'ctrl': data.get('ctrl', False),
+            'alt': data.get('alt', False),
+            'shift': data.get('shift', False)
+        }
+        
+        if any(modifiers.values()):
+            # Handle key combinations
+            computer.key_combination(key, **modifiers)
         else:
-            # Handle regular keys and modifiers
-            modifiers = {
-                'ctrl': data.get('ctrl', False),
-                'alt': data.get('alt', False),
-                'shift': data.get('shift', False)
-            }
-            if any(modifiers.values()):
-                # Handle key combinations
-                computer.key_combination(key, **modifiers)
-            else:
-                # Handle single key press
-                computer.key_press(key)
+            # Handle single key press
+            computer.key_press(key)
+            
+            # Add small delay after Enter key
+            if key.lower() == 'enter':
+                time.sleep(0.1)
+                
+        logger.debug(f"Processed key press: {key}")
     except Exception as e:
         logger.error(f"Key press error: {str(e)}")
 
@@ -128,16 +124,7 @@ def handle_computer():
     
     elif action == 'type':
         text = data.get('text', '')
-        # Handle special keys in curly braces
-        if text.startswith('{') and text.endswith('}'):
-            key = text[1:-1]  # Remove curly braces
-            if key.upper() == 'ENTER':
-                success = computer.key_press('enter')
-                time.sleep(0.1)  # Small delay after Enter
-            else:
-                success = computer.key_press(key)
-        else:
-            success = computer.type_text(text)
+        success = computer.type_text(text)
         return jsonify({'success': success})
     
     elif action == 'key':
@@ -150,20 +137,6 @@ def handle_computer():
         return jsonify({'position': pos})
     
     return jsonify({'error': f'Unknown action: {action}'})
-
-@app.route('/api/bash', methods=['POST'])
-def handle_bash():
-    data = request.json
-    command = data.get('command', '')
-    result = router.run_bash(command)
-    return jsonify(result)
-
-@app.route('/api/powershell', methods=['POST'])
-def handle_powershell():
-    data = request.json
-    command = data.get('command', '')
-    result = router.run_powershell(command)
-    return jsonify(result)
 
 if __name__ == '__main__':
     try:
