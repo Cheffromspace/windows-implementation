@@ -79,9 +79,8 @@ def handle_mouse_move(data):
 @socketio.on('mouse_click')
 def handle_mouse_click(data):
     try:
-        x, y = data['x'], data['y']
-        computer.mouse_move(x, y)  # Move to position first
-        computer.mouse_click()  # Then click
+        # Only perform the click without moving the mouse
+        computer.mouse_click()
     except Exception as e:
         logger.error(f"Mouse click error: {str(e)}")
 
