@@ -49,6 +49,22 @@ class ComputerControl:
         # Track mouse state
         self.is_mouse_down = False
         
+        # Map of special keys from DOM to pyautogui
+        self.key_mapping = {
+            "Enter": "enter",
+            "Backspace": "backspace",
+            "Delete": "delete",
+            "Tab": "tab",
+            "Escape": "esc",
+            "ArrowLeft": "left",
+            "ArrowRight": "right",
+            "ArrowUp": "up",
+            "ArrowDown": "down",
+            "Control": "ctrl",
+            "Alt": "alt",
+            "Shift": "shift"
+        }
+        
         logger.debug(f"Screen dimensions: {self.screen_width}x{self.screen_height}")
         
     def get_screen_frame(self) -> str:
@@ -166,9 +182,13 @@ class ComputerControl:
         """Press a keyboard key"""
         try:
             pyautogui.PAUSE = self.config["keyboard_settings"]["type_delay"]
-            pyautogui.press(key)
+            # Map special keys from DOM to pyautogui format
+            mapped_key = self.key_mapping.get(key, key.lower())
+            logger.debug(f"Pressing key: {key} (mapped to: {mapped_key})")
+            pyautogui.press(mapped_key)
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Key press error: {str(e)}")
             return False
 
     def key_combination(self, key: str, ctrl: bool = False, alt: bool = False, shift: bool = False) -> bool:
@@ -181,12 +201,15 @@ class ComputerControl:
                 keys.append('alt')
             if shift:
                 keys.append('shift')
-            keys.append(key)
+            # Map special keys for combinations too
+            mapped_key = self.key_mapping.get(key, key.lower())
+            keys.append(mapped_key)
             
             pyautogui.PAUSE = self.config["keyboard_settings"]["type_delay"]
             pyautogui.hotkey(*keys)
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Key combination error: {str(e)}")
             return False
 
     def type_text(self, text: str) -> bool:
