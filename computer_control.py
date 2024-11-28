@@ -49,8 +49,9 @@ class ComputerControl:
         # Track mouse state
         self.is_mouse_down = False
         
-        # Map of special keys from DOM to pyautogui
+        # Enhanced key mapping with explicit mappings for special keys
         self.key_mapping = {
+            # Navigation keys
             "Enter": "enter",
             "Backspace": "backspace",
             "Delete": "delete",
@@ -60,9 +61,22 @@ class ComputerControl:
             "ArrowRight": "right",
             "ArrowUp": "up",
             "ArrowDown": "down",
+            # Modifier keys
             "Control": "ctrl",
             "Alt": "alt",
-            "Shift": "shift"
+            "Shift": "shift",
+            "Meta": "win",
+            # Function keys
+            "F1": "f1", "F2": "f2", "F3": "f3", "F4": "f4",
+            "F5": "f5", "F6": "f6", "F7": "f7", "F8": "f8",
+            "F9": "f9", "F10": "f10", "F11": "f11", "F12": "f12",
+            # Additional special keys
+            "Home": "home",
+            "End": "end",
+            "PageUp": "pageup",
+            "PageDown": "pagedown",
+            "Insert": "insert",
+            "Space": "space"
         }
         
         logger.debug(f"Screen dimensions: {self.screen_width}x{self.screen_height}")
@@ -182,13 +196,26 @@ class ComputerControl:
         """Press a keyboard key"""
         try:
             pyautogui.PAUSE = self.config["keyboard_settings"]["type_delay"]
+            
+            # Log the incoming key press
+            logger.debug(f"Processing key press: {key}")
+            
             # Map special keys from DOM to pyautogui format
             mapped_key = self.key_mapping.get(key, key.lower())
-            logger.debug(f"Pressing key: {key} (mapped to: {mapped_key})")
-            pyautogui.press(mapped_key)
+            logger.debug(f"Mapped key '{key}' to '{mapped_key}'")
+            
+            # Handle special keys
+            if mapped_key in ['enter', 'backspace', 'tab']:
+                logger.debug(f"Handling special key: {mapped_key}")
+                pyautogui.press(mapped_key)
+            else:
+                # Handle regular keys
+                pyautogui.press(mapped_key)
+            
+            logger.debug(f"Key press completed: {mapped_key}")
             return True
         except Exception as e:
-            logger.error(f"Key press error: {str(e)}")
+            logger.error(f"Key press error for key '{key}': {str(e)}")
             return False
 
     def key_combination(self, key: str, ctrl: bool = False, alt: bool = False, shift: bool = False) -> bool:
@@ -201,12 +228,17 @@ class ComputerControl:
                 keys.append('alt')
             if shift:
                 keys.append('shift')
+                
             # Map special keys for combinations too
             mapped_key = self.key_mapping.get(key, key.lower())
+            logger.debug(f"Processing key combination: {'+'.join(keys + [mapped_key])}")
+            
             keys.append(mapped_key)
             
             pyautogui.PAUSE = self.config["keyboard_settings"]["type_delay"]
             pyautogui.hotkey(*keys)
+            
+            logger.debug(f"Key combination completed: {'+'.join(keys)}")
             return True
         except Exception as e:
             logger.error(f"Key combination error: {str(e)}")
@@ -216,9 +248,11 @@ class ComputerControl:
         """Type text"""
         try:
             pyautogui.PAUSE = self.config["keyboard_settings"]["type_delay"]
+            logger.debug(f"Typing text: {text}")
             pyautogui.write(text)
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Type text error: {str(e)}")
             return False
 
     def get_cursor_position(self) -> Tuple[int, int]:
