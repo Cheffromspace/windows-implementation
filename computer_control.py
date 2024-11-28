@@ -53,6 +53,7 @@ class ComputerControl:
         self.key_mapping = {
             # Navigation keys
             "Enter": "enter",
+            "NumpadEnter": "enter",
             "Backspace": "backspace",
             "Delete": "delete",
             "Tab": "tab",
@@ -205,8 +206,12 @@ class ComputerControl:
             logger.debug(f"Mapped key '{key}' to '{mapped_key}'")
             
             # Handle special keys
-            if mapped_key in ['enter', 'backspace', 'tab']:
-                logger.debug(f"Handling special key: {mapped_key}")
+            if mapped_key == 'enter':
+                logger.debug("Pressing Enter key")
+                pyautogui.press('enter')
+                time.sleep(0.1)  # Add small delay after Enter
+            elif mapped_key in ['backspace', 'tab']:
+                logger.debug(f"Pressing special key: {mapped_key}")
                 pyautogui.press(mapped_key)
             else:
                 # Handle regular keys

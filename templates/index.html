@@ -184,28 +184,47 @@
             }
         });
 
+        // Map of special key codes to their corresponding key names
+        const specialKeyMap = {
+            'Enter': 'enter',
+            'Backspace': 'backspace',
+            'Tab': 'tab',
+            'Space': 'space',
+            'ArrowLeft': 'left',
+            'ArrowRight': 'right',
+            'ArrowUp': 'up',
+            'ArrowDown': 'down',
+            'Delete': 'delete',
+            'Escape': 'escape'
+        };
+
         // Handle keyboard input with improved special key handling
         document.addEventListener('keydown', (e) => {
             // Always prevent default for special keys
-            if (e.key === 'Enter' || e.key === 'Backspace' || e.ctrlKey || e.altKey || e.metaKey) {
+            if (specialKeyMap[e.code] || e.ctrlKey || e.altKey || e.metaKey) {
                 e.preventDefault();
             }
 
-            // Enhanced logging for key events
-            console.log('Key event:', {
+            // Log the actual key event details
+            const eventDetails = {
                 key: e.key,
                 code: e.code,
+                keyCode: e.keyCode,
                 ctrl: e.ctrlKey,
                 alt: e.altKey,
                 shift: e.shiftKey,
                 meta: e.metaKey,
                 repeat: e.repeat,
                 type: e.type
-            });
+            };
+            console.log('Key event:', eventDetails);
+
+            // Handle special keys using the code property
+            const mappedKey = specialKeyMap[e.code] || e.key.toLowerCase();
 
             // Emit the key press event with enhanced metadata
             socket.emit('key_press', {
-                key: e.key,
+                key: mappedKey,
                 code: e.code,
                 ctrl: e.ctrlKey,
                 alt: e.altKey,
@@ -218,7 +237,7 @@
 
         // Prevent keyup default behavior for special keys
         document.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter' || e.key === 'Backspace' || e.ctrlKey || e.altKey || e.metaKey) {
+            if (specialKeyMap[e.code] || e.ctrlKey || e.altKey || e.metaKey) {
                 e.preventDefault();
             }
         });
