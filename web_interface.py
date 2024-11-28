@@ -88,17 +88,30 @@ def handle_mouse_click(*args):  # Changed to accept variable arguments
 def handle_key_press(data):
     try:
         key = data['key']
-        modifiers = {
-            'ctrl': data.get('ctrl', False),
-            'alt': data.get('alt', False),
-            'shift': data.get('shift', False)
-        }
-        if any(modifiers.values()):
-            # Handle key combinations
-            computer.key_combination(key, **modifiers)
+        logger.debug(f"Received key press: {data}")
+        
+        # Handle special key sequences
+        if data.get('isSpecial'):
+            logger.debug(f"Processing special key: {key}")
+            # Handle Enter key specifically
+            if key.lower() == 'enter':
+                computer.key_press('enter')
+                time.sleep(0.1)  # Small delay after Enter
+            else:
+                computer.key_press(key.lower())
         else:
-            # Handle single key press
-            computer.key_press(key)
+            # Handle regular keys and modifiers
+            modifiers = {
+                'ctrl': data.get('ctrl', False),
+                'alt': data.get('alt', False),
+                'shift': data.get('shift', False)
+            }
+            if any(modifiers.values()):
+                # Handle key combinations
+                computer.key_combination(key, **modifiers)
+            else:
+                # Handle single key press
+                computer.key_press(key)
     except Exception as e:
         logger.error(f"Key press error: {str(e)}")
 
@@ -119,7 +132,8 @@ def handle_computer():
         if text.startswith('{') and text.endswith('}'):
             key = text[1:-1]  # Remove curly braces
             if key.upper() == 'ENTER':
-                success = computer.key_press('Enter')
+                success = computer.key_press('enter')
+                time.sleep(0.1)  # Small delay after Enter
             else:
                 success = computer.key_press(key)
         else:
