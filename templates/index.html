@@ -184,43 +184,58 @@
             }
         });
 
-        // Map of special key codes to their corresponding key names
-        const specialKeyMap = {
-            'Enter': 'enter',
-            'Backspace': 'backspace',
-            'Tab': 'tab',
-            'Space': 'space',
-            'ArrowLeft': 'left',
-            'ArrowRight': 'right',
-            'ArrowUp': 'up',
-            'ArrowDown': 'down',
-            'Delete': 'delete',
-            'Escape': 'escape'
+        // Enhanced key mapping to match backend
+        const keyMapping = {
+            // Navigation keys
+            'Enter': 'Enter',
+            'NumpadEnter': 'Enter',
+            'Backspace': 'Backspace',
+            'Delete': 'Delete',
+            'Tab': 'Tab',
+            'Escape': 'Escape',
+            'ArrowLeft': 'ArrowLeft',
+            'ArrowRight': 'ArrowRight',
+            'ArrowUp': 'ArrowUp',
+            'ArrowDown': 'ArrowDown',
+            // Modifier keys
+            'Control': 'Control',
+            'Alt': 'Alt',
+            'Shift': 'Shift',
+            'Meta': 'Meta',
+            // Function keys
+            'F1': 'F1', 'F2': 'F2', 'F3': 'F3', 'F4': 'F4',
+            'F5': 'F5', 'F6': 'F6', 'F7': 'F7', 'F8': 'F8',
+            'F9': 'F9', 'F10': 'F10', 'F11': 'F11', 'F12': 'F12',
+            // Additional special keys
+            'Home': 'Home',
+            'End': 'End',
+            'PageUp': 'PageUp',
+            'PageDown': 'PageDown',
+            'Insert': 'Insert',
+            'Space': 'Space'
         };
 
         // Handle keyboard input with improved special key handling
         document.addEventListener('keydown', (e) => {
-            // Always prevent default for special keys
-            if (specialKeyMap[e.code] || e.ctrlKey || e.altKey || e.metaKey) {
+            // Always prevent default for special keys and modifiers
+            if (keyMapping[e.code] || e.ctrlKey || e.altKey || e.metaKey) {
                 e.preventDefault();
             }
 
-            // Log the actual key event details
-            const eventDetails = {
+            // Log detailed key event information for debugging
+            console.log('Key event details:', {
                 key: e.key,
                 code: e.code,
-                keyCode: e.keyCode,
+                mapped: keyMapping[e.code],
                 ctrl: e.ctrlKey,
                 alt: e.altKey,
                 shift: e.shiftKey,
                 meta: e.metaKey,
-                repeat: e.repeat,
-                type: e.type
-            };
-            console.log('Key event:', eventDetails);
+                repeat: e.repeat
+            });
 
             // Handle special keys using the code property
-            const mappedKey = specialKeyMap[e.code] || e.key.toLowerCase();
+            const mappedKey = keyMapping[e.code] || e.key;
 
             // Emit the key press event with enhanced metadata
             socket.emit('key_press', {
@@ -230,14 +245,13 @@
                 alt: e.altKey,
                 shift: e.shiftKey,
                 meta: e.metaKey,
-                repeat: e.repeat,
-                type: e.type
+                repeat: e.repeat
             });
         });
 
         // Prevent keyup default behavior for special keys
         document.addEventListener('keyup', (e) => {
-            if (specialKeyMap[e.code] || e.ctrlKey || e.altKey || e.metaKey) {
+            if (keyMapping[e.code] || e.ctrlKey || e.altKey || e.metaKey) {
                 e.preventDefault();
             }
         });
