@@ -184,14 +184,31 @@
             }
         });
 
-        // Handle keyboard input
+        // Handle keyboard input with improved special key handling
         document.addEventListener('keydown', (e) => {
             // Prevent default browser shortcuts
             if (e.ctrlKey || e.altKey || e.metaKey) {
                 e.preventDefault();
             }
+
+            // Log the key event for debugging
+            console.log('Key event:', {
+                key: e.key,
+                code: e.code,
+                ctrl: e.ctrlKey,
+                alt: e.altKey,
+                shift: e.shiftKey
+            });
+
+            // Special handling for Enter key
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent default form submission
+            }
+
+            // Emit the key press event with additional metadata
             socket.emit('key_press', {
                 key: e.key,
+                code: e.code,
                 ctrl: e.ctrlKey,
                 alt: e.altKey,
                 shift: e.shiftKey
