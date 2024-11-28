@@ -77,7 +77,7 @@ def handle_mouse_move(data):
         logger.error(f"Mouse move error: {str(e)}")
 
 @socketio.on('mouse_click')
-def handle_mouse_click(data):
+def handle_mouse_click(*args):  # Changed to accept variable arguments
     try:
         # Only perform the click without moving the mouse
         computer.mouse_click()

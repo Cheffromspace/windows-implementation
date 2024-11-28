@@ -75,7 +75,7 @@ class ComputerControl:
         VIEWPORT_WIDTH = 900
         VIEWPORT_HEIGHT = 600
 
-        # Calculate scale factors for both dimensions
+        # Calculate scale factors
         scale_x = self.screen_width / VIEWPORT_WIDTH
         scale_y = self.screen_height / VIEWPORT_HEIGHT
 
@@ -89,10 +89,12 @@ class ComputerControl:
         logger.debug(f"Scale factors: ({scale_x}, {scale_y})")
         logger.debug(f"Scaled coordinates: ({scaled_x}, {scaled_y})")
         
-        # Ensure coordinates are within screen bounds
-        scaled_x = max(0, min(scaled_x, self.screen_width - 1))
-        scaled_y = max(0, min(scaled_y, self.screen_height - 1))
+        # Ensure coordinates stay within screen bounds with padding
+        PADDING = 10  # Pixels from screen edge
+        scaled_x = max(PADDING, min(scaled_x, self.screen_width - PADDING))
+        scaled_y = max(PADDING, min(scaled_y, self.screen_height - PADDING))
         
+        logger.debug(f"Bounded coordinates: ({scaled_x}, {scaled_y})")
         return scaled_x, scaled_y
 
     def _focus_window(self, window_title: str = None) -> bool:
@@ -142,7 +144,7 @@ class ComputerControl:
             pyautogui.click(button=button)
             return True
         except Exception as e:
-            logger.error(f"Mouse click failed: {str(e)}")
+            logger.error(f"Mouse click error: {str(e)}")
             return False
 
     def double_click(self, x: int = None, y: int = None) -> bool:
