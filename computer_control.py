@@ -70,32 +70,18 @@ class ComputerControl:
         return (self.screen_width, self.screen_height)
 
     def _scale_coordinates(self, x: int, y: int) -> Tuple[int, int]:
-        """Scale coordinates from browser viewport (900x600) to screen coordinates"""
-        # Browser viewport dimensions
-        VIEWPORT_WIDTH = 900
-        VIEWPORT_HEIGHT = 600
-
-        # Calculate scale factors
-        scale_x = self.screen_width / VIEWPORT_WIDTH
-        scale_y = self.screen_height / VIEWPORT_HEIGHT
-
-        # Scale coordinates
-        scaled_x = int(x * scale_x)
-        scaled_y = int(y * scale_y)
-
-        # Log the scaling calculations
-        logger.debug(f"Scaling coordinates:")
+        """Process coordinates and ensure they stay within screen bounds"""
+        # Log the coordinates
+        logger.debug(f"Processing coordinates:")
         logger.debug(f"Input coordinates: ({x}, {y})")
-        logger.debug(f"Scale factors: ({scale_x}, {scale_y})")
-        logger.debug(f"Scaled coordinates: ({scaled_x}, {scaled_y})")
         
         # Ensure coordinates stay within screen bounds with padding
         PADDING = 10  # Pixels from screen edge
-        scaled_x = max(PADDING, min(scaled_x, self.screen_width - PADDING))
-        scaled_y = max(PADDING, min(scaled_y, self.screen_height - PADDING))
+        bounded_x = max(PADDING, min(x, self.screen_width - PADDING))
+        bounded_y = max(PADDING, min(y, self.screen_height - PADDING))
         
-        logger.debug(f"Bounded coordinates: ({scaled_x}, {scaled_y})")
-        return scaled_x, scaled_y
+        logger.debug(f"Bounded coordinates: ({bounded_x}, {bounded_y})")
+        return bounded_x, bounded_y
 
     def _focus_window(self, window_title: str = None) -> bool:
         """Focus window by title, or game window if no title provided"""
