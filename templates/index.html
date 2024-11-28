@@ -165,11 +165,9 @@
             }
         });
 
-        // Handle clicks
+        // Handle clicks - simplified to just emit click event without coordinates
         desktop.addEventListener('click', (e) => {
             const info = getImageInfo();
-            
-            // Calculate coordinates relative to the image
             const relativeX = e.clientX - info.imageRect.left;
             const relativeY = e.clientY - info.imageRect.top;
             
@@ -177,9 +175,12 @@
             const x = Math.round(relativeX * info.scaleX);
             const y = Math.round(relativeY * info.scaleY);
             
-            // Only emit if coordinates are within bounds
+            // Only emit if click is within bounds
             if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight) {
-                socket.emit('mouse_click', {x, y});
+                // First move to the position
+                socket.emit('mouse_move', {x, y});
+                // Then emit click without coordinates
+                socket.emit('mouse_click');
             }
         });
 
