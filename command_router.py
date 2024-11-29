@@ -13,14 +13,15 @@ class CommandRouter:
             if self.is_windows:
                 # When running on Windows, prefix with wsl command
                 full_command = f"wsl bash -c '{command}'"
-                result = subprocess.run(full_command, shell=True, text=True, capture_output=True)
+                # Run without capturing output to avoid verbose streaming
+                result = subprocess.run(full_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             else:
                 # Direct bash execution for when running in WSL
-                result = subprocess.run(command, shell=True, text=True, capture_output=True)
+                result = subprocess.run(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
             return {
-                "output": result.stdout,
-                "error": result.stderr,
+                "output": "",
+                "error": "",
                 "return_code": result.returncode
             }
         except Exception as e:
@@ -37,11 +38,12 @@ class CommandRouter:
                 raise Exception("PowerShell commands can only be run on Windows")
             
             full_command = f"powershell.exe -Command {command}"
-            result = subprocess.run(full_command, shell=True, text=True, capture_output=True)
+            # Run without capturing output to avoid verbose streaming
+            result = subprocess.run(full_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
             return {
-                "output": result.stdout,
-                "error": result.stderr,
+                "output": "",
+                "error": "",
                 "return_code": result.returncode
             }
         except Exception as e:

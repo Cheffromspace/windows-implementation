@@ -5,10 +5,11 @@ from computer_control import ComputerControl
 import logging
 import time
 import threading
+from queue import Queue
 from engineio.async_drivers import threading as async_threading
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging - set to INFO level and only log important events
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -16,14 +17,44 @@ app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, 
                    cors_allowed_origins="*",
                    async_mode='threading',
-                   logger=True,
-                   engineio_logger=True)
+                   logger=False,  # Disable socketio logging
+                   engineio_logger=False)  # Disable engineio logging
 
 router = CommandRouter()
 computer = ComputerControl()
 
 # Flag to control streaming
 streaming = False
+
+# Key event queue and lock
+key_queue = Queue()
+key_lock = threading.Lock()
+key_processor_active = False
+
+def process_key_events():
+    """Process queued key events in order"""
+    global key_processor_active
+    logger.info("Starting key event processor")
+    while key_processor_active:
+        try:
+            if not key_queue.empty():
+                with key_lock:
+                    event = key_queue.get()
+                    if event:
+                        key = event['key']
+                        modifiers = event['modifiers']
+                        if any(modifiers.values()):
+                            computer.key_combination(key, **modifiers)
+                        else:
+                            computer.key_press(key)
+                        # Small delay between keys
+                        time.sleep(0.02)
+            else:
+                # Short sleep when queue is empty
+                time.sleep(0.01)
+        except Exception as e:
+            logger.error(f"Key processing error: {str(e)}")
+    logger.info("Stopping key event processor")
 
 def stream_desktop():
     """Stream desktop frames over WebSocket"""
@@ -57,16 +88,22 @@ def handle_connect():
         'height': screen_size[1]
     })
     # Start streaming
-    global streaming
+    global streaming, key_processor_active
     if not streaming:
         streaming = True
         threading.Thread(target=stream_desktop, daemon=True).start()
+    
+    # Start key processor if not already running
+    if not key_processor_active:
+        key_processor_active = True
+        threading.Thread(target=process_key_events, daemon=True).start()
 
 @socketio.on('disconnect')
 def handle_disconnect():
     logger.info('Client disconnected')
-    global streaming
+    global streaming, key_processor_active
     streaming = False
+    key_processor_active = False
 
 @socketio.on('mouse_move')
 def handle_mouse_move(data):
@@ -87,8 +124,6 @@ def handle_mouse_click(*args):
 def handle_key_press(data):
     try:
         key = data['key']
-        logger.debug(f"Received key press: {data}")
-        
         # Handle regular keys and modifiers
         modifiers = {
             'ctrl': data.get('ctrl', False),
@@ -96,18 +131,12 @@ def handle_key_press(data):
             'shift': data.get('shift', False)
         }
         
-        if any(modifiers.values()):
-            # Handle key combinations
-            computer.key_combination(key, **modifiers)
-        else:
-            # Handle single key press
-            computer.key_press(key)
-            
-            # Add small delay after Enter key
-            if key.lower() == 'enter':
-                time.sleep(0.1)
-                
-        logger.debug(f"Processed key press: {key}")
+        # Queue the key event instead of processing immediately
+        key_queue.put({
+            'key': key,
+            'modifiers': modifiers
+        })
+        
     except Exception as e:
         logger.error(f"Key press error: {str(e)}")
 

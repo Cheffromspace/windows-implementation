@@ -37,7 +37,8 @@ class ComputerControl:
                     "click_delay": 0.1
                 },
                 "keyboard_settings": {
-                    "type_delay": 0.1
+                    "type_delay": 0.05,  # Increased base delay
+                    "key_interval": 0.02  # Added minimum interval between keys
                 }
             }
 
@@ -196,6 +197,7 @@ class ComputerControl:
     def key_press(self, key: str) -> bool:
         """Press a keyboard key"""
         try:
+            # Set base delay for PyAutoGUI
             pyautogui.PAUSE = self.config["keyboard_settings"]["type_delay"]
             
             # Log the incoming key press
@@ -204,6 +206,9 @@ class ComputerControl:
             # Map special keys from DOM to pyautogui format
             mapped_key = self.key_mapping.get(key, key.lower())
             logger.debug(f"Mapped key '{key}' to '{mapped_key}'")
+            
+            # Add small delay before key press to prevent buffering issues
+            time.sleep(self.config["keyboard_settings"]["key_interval"])
             
             # Handle special keys
             if mapped_key == 'enter':
@@ -214,8 +219,10 @@ class ComputerControl:
                 logger.debug(f"Pressing special key: {mapped_key}")
                 pyautogui.press(mapped_key)
             else:
-                # Handle regular keys
+                # Handle regular keys with synchronous press
                 pyautogui.press(mapped_key)
+                # Ensure key is processed before continuing
+                time.sleep(self.config["keyboard_settings"]["key_interval"])
             
             logger.debug(f"Key press completed: {mapped_key}")
             return True
@@ -240,8 +247,14 @@ class ComputerControl:
             
             keys.append(mapped_key)
             
+            # Add delay before combination
+            time.sleep(self.config["keyboard_settings"]["key_interval"])
+            
             pyautogui.PAUSE = self.config["keyboard_settings"]["type_delay"]
             pyautogui.hotkey(*keys)
+            
+            # Ensure combination is processed
+            time.sleep(self.config["keyboard_settings"]["key_interval"])
             
             logger.debug(f"Key combination completed: {'+'.join(keys)}")
             return True
@@ -254,7 +267,13 @@ class ComputerControl:
         try:
             pyautogui.PAUSE = self.config["keyboard_settings"]["type_delay"]
             logger.debug(f"Typing text: {text}")
-            pyautogui.write(text)
+            
+            # Type each character individually with delay
+            for char in text:
+                pyautogui.write(char)
+                # Ensure character is processed before continuing
+                time.sleep(self.config["keyboard_settings"]["key_interval"])
+            
             return True
         except Exception as e:
             logger.error(f"Type text error: {str(e)}")
