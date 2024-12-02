@@ -1,6 +1,47 @@
 # Windows Control MCP Server
 
-This MCP server provides an interface for Claude to control Windows through API endpoints while viewing a live desktop stream.
+A powerful Model Context Protocol (MCP) server that enables Claude to control Windows through a secure API interface while viewing live desktop feedback. This project implements a three-layer architecture for reliable and safe system control.
+
+## Architecture Overview
+
+```mermaid
+graph TD
+    A[MCP Server] --> B[FastAPI Server]
+    B --> C[Computer Control]
+    C --> D[Windows System]
+```
+
+The system consists of three main layers:
+1. **MCP Server Layer** (TypeScript) - Handles Claude interaction and command processing
+2. **API Layer** (Python/FastAPI) - Provides RESTful endpoints for system control
+3. **Computer Control Layer** (Python) - Manages low-level Windows operations
+
+## Features
+
+### System Control
+- **Mouse Operations**
+  - Precise cursor movement
+  - Single/double clicks (left, right, middle buttons)
+  - Drag operations
+  - Position tracking
+
+- **Keyboard Input**
+  - Text typing with configurable delays
+  - Special key handling
+  - Key combinations (Ctrl, Alt, Shift modifiers)
+  - International character support
+
+- **Screen Operations**
+  - Real-time screenshot capture
+  - Screen dimension detection
+  - Image processing and optimization
+  - Base64 encoding for transmission
+
+- **Window Management**
+  - Window focus control
+  - State management (minimize, maximize, restore)
+  - Smart coordinate scaling
+  - Boundary protection
 
 ## Prerequisites
 
@@ -10,31 +51,31 @@ This MCP server provides an interface for Claude to control Windows through API 
 
 ## Installation
 
-1. Install Python dependencies:
+1. **Install Python Dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Install Node.js dependencies:
+2. **Install Node.js Dependencies**
 ```bash
 npm install
 ```
 
-3. Build the MCP server:
+3. **Build the MCP Server**
 ```bash
 npm run build
 ```
 
-## Usage with Claude Desktop
+## Configuration
+
+### Claude Desktop Integration
 
 1. Start the Python API server:
 ```bash
 python main.py
 ```
-This will start the API server on port 8000.
 
-2. Add this configuration to your Claude Desktop config file (`%APPDATA%\Claude\claude_desktop_config.json`):
-
+2. Configure Claude Desktop by adding to `%APPDATA%\Claude\claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
@@ -50,132 +91,142 @@ This will start the API server on port 8000.
 }
 ```
 
-Replace:
-- `YourUsername` with your Windows username
-- `path\\to\\windows-implementation` with the actual path to this project
-- `http://localhost:8000` with your Python API server URL if different
-
-Note: All Windows paths must:
-- Use absolute paths (starting with `C:\\` or appropriate drive letter)
-- Use double backslashes (`\\`) to escape path separators
-- Point to the exact file locations on your system
-
 ### Configuration Options
 
-- `--api-url`: The URL of the Python API server (default: `http://localhost:8000`)
+- **API Settings**
+  - `--api-url`: API server URL (default: http://localhost:8000)
 
-## Available Tools
+- **Performance Settings**
+  - Mouse movement duration
+  - Click delays
+  - Keyboard input timing
+  - Screenshot quality
 
-The MCP server provides the following tools:
+## Security Features
 
-- `move_mouse`: Move the mouse cursor to specific coordinates
-  - Parameters: `x` (number), `y` (number)
+1. **Input Validation**
+- Strict coordinate boundary checking
+- Key mapping validation
+- Screenshot size limits
 
-- `click_mouse`: Click the mouse at the current position
-  - Optional parameter: `button` ("left", "right", "middle")
+2. **Safety Measures**
+- PyAutoGUI failsafe mechanism
+- Screen boundary protection
+- Controlled input delays
+- Resource management
 
-- `double_click`: Double click at current or specified position
-  - Optional parameters: `x` (number), `y` (number)
-
-- `type_text`: Type text using the keyboard
-  - Parameter: `text` (string)
-
-- `press_key`: Press a specific keyboard key
-  - Parameter: `key` (string) - e.g., 'enter', 'tab', 'escape'
-
-- `get_screen_size`: Get the screen dimensions
-  - No parameters required
-
-- `get_screenshot`: Take a screenshot of the current screen
-  - No parameters required
-
-- `get_cursor_position`: Get the current cursor position
-  - No parameters required
-
-## Example Usage in Claude
-
-Once connected, you can ask Claude to perform actions like:
-
-```
-Can you move the mouse to coordinates (100, 100) and click?
-```
-
-```
-Could you type "Hello, World!" into the active window?
-```
-
-```
-Please take a screenshot of my current screen.
-```
-
-```
-What are my screen dimensions?
-```
-
-```
-Where is my mouse cursor currently positioned?
-```
+3. **Error Handling**
+- Comprehensive exception handling
+- Detailed logging
+- Automatic recovery mechanisms
 
 ## Development
 
-To run in development mode with automatic recompilation:
+### Running in Development Mode
 
 ```bash
 npm run dev
 ```
 
-To run with a custom API URL:
+### Custom API Configuration
 
 ```bash
 npm start -- --api-url=http://localhost:8000
 ```
 
-## Architecture
+## API Documentation
 
-This project consists of two main components:
+### Mouse Control Endpoints
 
-1. A Python API server that handles the actual Windows control operations
-2. An MCP server written in TypeScript that provides a standardized interface for Claude to interact with the Windows control functionality
+- `POST /mouse/move`
+  - Move cursor to coordinates
+  - Parameters: `x`, `y`
 
-The MCP server acts as an adapter layer, translating Claude's requests into API calls to the Python server.
+- `POST /mouse/click`
+  - Click at current position
+  - Optional: `button` ("left", "right", "middle")
 
-### API Server Communication
+- `POST /mouse/double-click`
+  - Double click at position
+  - Optional: `x`, `y`
 
-The MCP server communicates with the Python API server over HTTP. By default, it expects the API server to be running at `http://localhost:8000`, but this can be configured using the `--api-url` argument.
+### Keyboard Control Endpoints
 
-The API server provides endpoints for:
-- Mouse control (`/mouse/move`, `/mouse/click`, `/mouse/double-click`, `/mouse/position`)
-- Keyboard input (`/keyboard/type`, `/keyboard/press`)
-- Screen information (`/screen/size`, `/screenshot`)
+- `POST /keyboard/type`
+  - Type text
+  - Parameter: `text`
 
-All API endpoints return a standardized response format:
-```typescript
-{
-  success: boolean;
-  message: string;
-  data?: any;
-}
-```
+- `POST /keyboard/press`
+  - Press specific key
+  - Parameter: `key`
+  - Optional: `ctrl`, `alt`, `shift`
 
-### Windows Path Requirements
+### Screen Operation Endpoints
 
-When configuring the MCP server in Claude Desktop's config file, it's important to follow Windows path conventions:
+- `GET /screenshot`
+  - Capture screen
+  - Returns base64 encoded JPEG
 
-1. Use absolute paths starting with the drive letter (e.g., `C:\\`)
-2. Escape backslashes by doubling them (e.g., `C:\\Users\\YourUsername`)
-3. Point to the exact file locations on your system
+- `GET /screen/size`
+  - Get screen dimensions
 
-Example of a properly formatted config:
-```json
-{
-  "mcpServers": {
-    "windows-control": {
-      "command": "C:\\Program Files\\nodejs\\node.exe",
-      "args": [
-        "C:\\Users\\YourUsername\\Projects\\windows-implementation\\dist\\index.js",
-        "--api-url=http://localhost:8000"
-      ],
-      "cwd": "C:\\Users\\YourUsername\\Projects\\windows-implementation"
-    }
-  }
-}
+## Technical Details
+
+### Stack Components
+
+- **Frontend/MCP**
+  - TypeScript
+  - Model Context Protocol SDK
+  - Axios
+
+- **Backend/API**
+  - Python 3.8+
+  - FastAPI
+  - Uvicorn
+  - Pydantic
+
+- **System Integration**
+  - PyAutoGUI
+  - Win32GUI
+  - OpenCV
+  - PIL
+  - NumPy
+
+## Error Handling
+
+The system implements a layered error handling approach:
+
+1. **MCP Server Level**
+- Request validation
+- Response formatting
+- Connection management
+
+2. **API Level**
+- Endpoint validation
+- Request parsing
+- Response standardization
+
+3. **System Level**
+- Operation validation
+- Resource management
+- Recovery procedures
+
+## Performance Optimization
+
+- Efficient screenshot compression
+- Smart coordinate scaling
+- Controlled input delays
+- Memory-efficient image handling
+- Proper resource cleanup
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
