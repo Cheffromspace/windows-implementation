@@ -7,3 +7,7 @@ flask-socketio>=5.0.0
 python-engineio>=4.0.0
 python-socketio>=5.0.0
 pywin32>=300
+fastapi>=0.68.0
+uvicorn>=0.15.0
+sse-starlette>=1.0.0
+python-multipart>=0.0.5
